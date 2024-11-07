@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyDataStreamUtils", "FrostyDataStreamUtils\FrostyDataStreamUtils.csproj", "{63CC6473-65D6-4692-B322-1A84CD48D7B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FrostyMeshPlugin", "FrostyMeshPlugin\FrostyMeshPlugin.csproj", "{A2D59AD9-EB04-4C17-85EF-43870FE80D40}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{F32BA957-4E61-42BA-9397-8A4F0BE398C8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{63CC6473-65D6-4692-B322-1A84CD48D7B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63CC6473-65D6-4692-B322-1A84CD48D7B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63CC6473-65D6-4692-B322-1A84CD48D7B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63CC6473-65D6-4692-B322-1A84CD48D7B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2D59AD9-EB04-4C17-85EF-43870FE80D40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2D59AD9-EB04-4C17-85EF-43870FE80D40}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2D59AD9-EB04-4C17-85EF-43870FE80D40}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2D59AD9-EB04-4C17-85EF-43870FE80D40}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F32BA957-4E61-42BA-9397-8A4F0BE398C8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F32BA957-4E61-42BA-9397-8A4F0BE398C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F32BA957-4E61-42BA-9397-8A4F0BE398C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F32BA957-4E61-42BA-9397-8A4F0BE398C8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
