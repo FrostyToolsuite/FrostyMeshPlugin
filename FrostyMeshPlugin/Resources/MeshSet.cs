@@ -38,7 +38,7 @@ public class MeshSet : Resource
         ProfileVersion.Fifa23);
 
     private static readonly bool s_isMadden = ProfilesLibrary.IsLoaded(ProfileVersion.Madden19, ProfileVersion.Madden20,
-        ProfileVersion.Madden21, ProfileVersion.Madden22, ProfileVersion.Madden23);
+        ProfileVersion.Madden21, ProfileVersion.Madden22, ProfileVersion.Madden23, ProfileVersion.Madden24, ProfileVersion.Madden25);
 
     private BoundingBox m_boundingBox;
     public string Name { get; private set; }
@@ -49,29 +49,31 @@ public class MeshSet : Resource
     private ushort[] m_lodFadeDistanceFactors = new ushort[c_maxMeshCount * 2 - 1];
     private uint[] m_unk2 = new uint[4];
     private MeshSetFlags m_flags;
-    private short m_shaderDrawOrder;
-    private short m_shaderDrawOrderUserSlot;
+    private byte m_shaderDrawOrder;
+    private byte m_shaderDrawPostFlush;
+    private byte m_shaderDrawOrderUserSlot;
     private short m_shaderDrawOrderSubOrder;
-    private ushort[] m_unk3 = new ushort[6];
+    private ushort[] m_subsetStartIndices = new ushort[c_maxMeshCount];
     private ushort m_boneOrPartCount;
     private List<ushort> m_cullBoxBoneIndices = new();
     private List<BoundingBox> m_cullBoundingBoxes = new();
     private List<Matrix4x4> m_partTransforms = new();
     private List<BoundingBox> m_partBoundingBoxes = new();
+    public Block<byte>? InlineData { get; private set; }
 
     private readonly List<Mesh> m_meshes = new(c_maxMeshCount);
 
     public override void Deserialize(DataStream inStream, ReadOnlySpan<byte> inResMeta)
     {
-        uint headerSize, inlineVertexDataSize, relocTableSize, meshSetSize, subSetSize;
+        int headerSize, inlineVertexDataSize, relocTableSize, meshSetSize, subSetSize;
         if (ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard))
         {
-            headerSize = BinaryPrimitives.ReadUInt32LittleEndian(inResMeta[0..]); // size of meshset + meshes + subset
-            relocTableSize = BinaryPrimitives.ReadUInt32LittleEndian(inResMeta[4..]); // size of reloc table
-            inlineVertexDataSize = BinaryPrimitives.ReadUInt32LittleEndian(inResMeta[8..]); // size of vertex data inside this res
-            meshSetSize = inStream.ReadUInt32();
+            headerSize = BinaryPrimitives.ReadInt32LittleEndian(inResMeta[0..]); // size of meshset + meshes + subset
+            relocTableSize = BinaryPrimitives.ReadInt32LittleEndian(inResMeta[4..]); // size of reloc table
+            inlineVertexDataSize = BinaryPrimitives.ReadInt32LittleEndian(inResMeta[8..]); // size of vertex data inside this res
+            meshSetSize = inStream.ReadInt32();
             uint meshSize = inStream.ReadUInt32();
-            subSetSize = inStream.ReadUInt32();
+            subSetSize = inStream.ReadInt32();
             inStream.Pad(16);
 
             Block<byte> buffer = new((int)(inStream.Length - inStream.Position));
@@ -81,9 +83,9 @@ public class MeshSet : Resource
         }
         else
         {
-            headerSize = BinaryPrimitives.ReadUInt32LittleEndian(inResMeta[0..]); // size of meshset + meshes + subset
-            inlineVertexDataSize = BinaryPrimitives.ReadUInt32LittleEndian(inResMeta[4..]); // size of vertex data inside this res
-            relocTableSize = BinaryPrimitives.ReadUInt32LittleEndian(inResMeta[8..]); // size of reloc table
+            headerSize = BinaryPrimitives.ReadInt32LittleEndian(inResMeta[0..]); // size of meshset + meshes + subset
+            inlineVertexDataSize = BinaryPrimitives.ReadInt32LittleEndian(inResMeta[4..]); // size of vertex data inside this res
+            relocTableSize = BinaryPrimitives.ReadInt32LittleEndian(inResMeta[8..]); // size of reloc table
             meshSetSize = BinaryPrimitives.ReadUInt16LittleEndian(inResMeta[12..]); // size of meshset
             subSetSize = BinaryPrimitives.ReadUInt16LittleEndian(inResMeta[14..]); // size of subset
         }
@@ -129,7 +131,7 @@ public class MeshSet : Resource
 
         if (ProfilesLibrary.FrostbiteVersion >= "2021.1.1")
         {
-            for (int i = 0; i < (ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard) ? 3 : 4); i++)
+            for (int i = 0; i < (ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard) || ProfilesLibrary.FrostbiteVersion >= "2023.1.1" ? 3 : 4); i++)
             {
                 m_unk2[i] = inStream.ReadUInt32(inPad: true);
             }
@@ -152,16 +154,12 @@ public class MeshSet : Resource
 
         if (ProfilesLibrary.FrostbiteVersion >= "2015.4")
         {
+            m_shaderDrawOrder = inStream.ReadByte();
             if (s_isMadden)
             {
-                m_shaderDrawOrder = inStream.ReadInt16(inPad: true);
-                m_shaderDrawOrderUserSlot = inStream.ReadInt16(inPad: true);
+                m_shaderDrawPostFlush = inStream.ReadByte();
             }
-            else
-            {
-                m_shaderDrawOrder = inStream.ReadByte();
-                m_shaderDrawOrderUserSlot = inStream.ReadByte();
-            }
+            m_shaderDrawOrderUserSlot = inStream.ReadByte();
             m_shaderDrawOrderSubOrder = inStream.ReadInt16(inPad: true);
         }
 
@@ -172,9 +170,9 @@ public class MeshSet : Resource
 
         if (ProfilesLibrary.IsLoaded(ProfileVersion.Madden22) || ProfilesLibrary.FrostbiteVersion >= "2021.1.1")
         {
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < c_maxMeshCount; i++)
             {
-                m_unk3[i] = inStream.ReadUInt16(inPad: true);
+                m_subsetStartIndices[i] = inStream.ReadUInt16(inPad: true);
             }
         }
 
@@ -251,6 +249,13 @@ public class MeshSet : Resource
         inStream.Pad(16);
 
         Debug.Assert(inStream.Position == meshSetSize, "Didnt read MeshSet correctly");
+
+        if (inlineVertexDataSize != 0)
+        {
+            inStream.Position = headerSize;
+            InlineData = new Block<byte>(inlineVertexDataSize);
+            inStream.ReadExactly(InlineData);
+        }
 
         if (ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard))
         {

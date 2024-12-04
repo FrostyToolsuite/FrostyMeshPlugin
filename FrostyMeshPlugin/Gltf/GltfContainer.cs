@@ -203,31 +203,34 @@ public class GltfContainer : Container
                     for (int i = 0; i < mesh.Uvs.Count; i++)
                     {
                         List<Vector2> uv = mesh.Uvs[i];
-                        primitive.Attributes.Add($"TEXCOORD_{i}", accessors.Count);
-                        Accessor accessor = new()
+                        if (uv.Count > 0)
                         {
-                            BufferView = bufferViews.Count,
-                            ComponentType = Accessor.ComponentTypeEnum.FLOAT,
-                            Count = uv.Count,
-                            Type = Accessor.TypeEnum.VEC2
-                        };
-                        accessors.Add(accessor);
+                            primitive.Attributes.Add($"TEXCOORD_{i}", accessors.Count);
+                            Accessor accessor = new()
+                            {
+                                BufferView = bufferViews.Count,
+                                ComponentType = Accessor.ComponentTypeEnum.FLOAT,
+                                Count = uv.Count,
+                                Type = Accessor.TypeEnum.VEC2
+                            };
+                            accessors.Add(accessor);
 
-                        BufferView bufferView = new()
-                        {
-                            Buffer = buffers.Count,
-                            ByteOffset = (int)stream.Position,
-                            Target = BufferView.TargetEnum.ARRAY_BUFFER
-                        };
-                        bufferViews.Add(bufferView);
+                            BufferView bufferView = new()
+                            {
+                                Buffer = buffers.Count,
+                                ByteOffset = (int)stream.Position,
+                                Target = BufferView.TargetEnum.ARRAY_BUFFER
+                            };
+                            bufferViews.Add(bufferView);
 
-                        foreach (Vector2 vec in uv)
-                        {
-                            // write to buffer
-                            stream.WriteVector2(vec);
+                            foreach (Vector2 vec in uv)
+                            {
+                                // write to buffer
+                                stream.WriteVector2(vec);
+                            }
+
+                            bufferView.ByteLength = (int)(stream.Position - bufferView.ByteOffset);
                         }
-
-                        bufferView.ByteLength = (int)(stream.Position - bufferView.ByteOffset);
                     }
 
                     gltfMesh.Primitives = Set(new List<MeshPrimitive> { primitive });
@@ -242,7 +245,10 @@ public class GltfContainer : Container
 
             scenes.Add(scene);
 
-            buffers.Add(new Buffer { ByteLength = (int)stream.Length });
+            if (stream.Length > 0)
+            {
+                buffers.Add(new Buffer { ByteLength = (int)stream.Length });
+            }
 
             gltf.Scene = 0;
             gltf.Nodes = Set(nodes);

@@ -7,26 +7,6 @@ namespace FrostyMeshPlugin.Utils;
 
 public static class DataStreamExtensions
 {
-    public static Matrix4x4 ReadLinearTransform(this DataStream stream)
-    {
-        stream.Pad(16);
-        return new Matrix4x4(stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(),
-            stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(),
-            stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(),
-            stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle());
-    }
-
-    public static string ReadString(this DataStream stream)
-    {
-        string retVal = string.Empty;
-        stream.ReadRelocPtr(ds =>
-        {
-            retVal = ds.ReadNullTerminatedString();
-        });
-
-        return retVal;
-    }
-
     public static GeometryDeclarationDesc ReadGeometryDeclarationDesc(this DataStream stream)
     {
         stream.Pad(4);
@@ -40,8 +20,8 @@ public static class DataStreamExtensions
         {
             geomDeclDesc.Elements[i] = new GeometryDeclarationDesc.Element
             {
-                Usage = (VertexElementUsage)stream.ReadByte(),
-                Format = (VertexElementFormat)stream.ReadByte(),
+                Usage = stream.ReadByte(),
+                Format = stream.ReadByte(),
                 Offset = stream.ReadByte(),
                 StreamIndex = stream.ReadByte()
             };
@@ -51,7 +31,7 @@ public static class DataStreamExtensions
             geomDeclDesc.Streams[i] = new GeometryDeclarationDesc.Stream
             {
                 VertexStride = stream.ReadByte(),
-                Classification = (VertexElementClassification)stream.ReadByte()
+                Classification = stream.ReadByte()
             };
         }
 
@@ -62,15 +42,15 @@ public static class DataStreamExtensions
         return geomDeclDesc;
     }
 
-    public static Vector2 ReadVertexAsVector2(this DataStream stream, VertexElementFormat inFormat)
+    public static Vector2 ReadVertexAsVector2(this DataStream stream, string inFormat)
     {
         switch (inFormat)
         {
-            case VertexElementFormat.Float2:
+            case "VertexElementFormat_Float2":
                 return stream.ReadVector2();
-            case VertexElementFormat.Half2:
+            case "VertexElementFormat_Half2":
                 return new Vector2((float)stream.ReadHalf(), (float)stream.ReadHalf());
-            case VertexElementFormat.Short2N:
+            case "VertexElementFormat_Short2N":
                 return new Vector2(stream.ReadInt16() / (float)short.MaxValue * 0.5f + 0.5f,
                     stream.ReadInt16() / (float)short.MaxValue * 0.5f + 0.5f);
             default:
@@ -78,18 +58,18 @@ public static class DataStreamExtensions
         }
     }
 
-    public static Vector3 ReadVertexAsVector3(this DataStream stream, VertexElementFormat inFormat)
+    public static Vector3 ReadVertexAsVector3(this DataStream stream, string inFormat)
     {
         switch (inFormat)
         {
-            case VertexElementFormat.Float3:
+            case "VertexElementFormat_Float3":
                 return stream.ReadVector3();
-            case VertexElementFormat.Float4:
+            case "VertexElementFormat_Float4":
                 Vector4 vec4 = stream.ReadVector4();
                 return new Vector3(vec4.X, vec4.Y, vec4.Z);
-            case VertexElementFormat.Half3:
+            case "VertexElementFormat_Half3":
                 return new Vector3((float)stream.ReadHalf(), (float)stream.ReadHalf(), (float)stream.ReadHalf());
-            case VertexElementFormat.Half4:
+            case "VertexElementFormat_Half4":
                 float x = (float)stream.ReadHalf();
                 float y = (float)stream.ReadHalf();
                 float z = (float)stream.ReadHalf();
@@ -100,68 +80,64 @@ public static class DataStreamExtensions
         }
     }
 
-    public static Vector4 ReadVertexAsVector4(this DataStream stream, VertexElementFormat inFormat)
+    public static Vector4 ReadVertexAsVector4(this DataStream stream, string inFormat)
     {
         switch (inFormat)
         {
-            case VertexElementFormat.Float3:
+            case "VertexElementFormat_Float3":
                 return new Vector4(stream.ReadVector3(), 0);
-            case VertexElementFormat.Float4:
+            case "VertexElementFormat_Float4":
                 return stream.ReadVector4();
-            case VertexElementFormat.Half3:
+            case "VertexElementFormat_Half3":
                 return new Vector4((float)stream.ReadHalf(), (float)stream.ReadHalf(), (float)stream.ReadHalf(), 0);
-            case VertexElementFormat.Half4:
+            case "VertexElementFormat_Half4":
                 float x = (float)stream.ReadHalf();
                 float y = (float)stream.ReadHalf();
                 float z = (float)stream.ReadHalf();
                 float w = (float)stream.ReadHalf();
                 return new Vector4(x, y, z, w);
-            case VertexElementFormat.UByte4N:
+            case "VertexElementFormat_UByte4N":
                 return new Vector4(stream.ReadByte() / 255.0f, stream.ReadByte() / 255.0f,
                     stream.ReadByte() / 255.0f, stream.ReadByte() / 255.0f);
-            case VertexElementFormat.UShort4N:
+            case "VertexElementFormat_UShort4N":
                 return new Vector4(stream.ReadUInt16() / 65535.0f, stream.ReadUInt16() / 65535.0f,
                     stream.ReadUInt16() / 65535.0f, stream.ReadUInt16() / 65535.0f);
             default:
-                throw new Exception($"Can't convert {inFormat} to Float3");
+                throw new Exception($"Can't convert {inFormat} to Float4");
         }
     }
 
-    public static Vector4UI ReadVertexAsVector4UI(this DataStream stream, VertexElementFormat inFormat)
+    public static Vector4<uint> ReadVertexAsVector4UInt(this DataStream stream, string inFormat)
     {
         switch (inFormat)
         {
-            case VertexElementFormat.Byte4:
-            case VertexElementFormat.Byte4N:
-            case VertexElementFormat.UByte4:
-            case VertexElementFormat.UByte4N:
-                return new Vector4UI(stream.ReadByte(), stream.ReadByte(), stream.ReadByte(), stream.ReadByte());
-            case VertexElementFormat.UShort4:
-            case VertexElementFormat.UShort4N:
-                return new Vector4UI(stream.ReadUInt16(), stream.ReadUInt16(), stream.ReadUInt16(), stream.ReadUInt16());
+            case "VertexElementFormat_UByte4":
+                return new Vector4<uint>(stream.ReadByte(), stream.ReadByte(), stream.ReadByte(), stream.ReadByte());
+            case "VertexElementFormat_UShort4":
+                return new Vector4<uint>(stream.ReadUInt16(), stream.ReadUInt16(), stream.ReadUInt16(), stream.ReadUInt16());
             default:
                 throw new Exception($"Can't convert {inFormat} to UInt4");
         }
     }
 
-    public static float ReadVertexAsSingle(this DataStream stream, VertexElementFormat inFormat)
+    public static float ReadVertexAsSingle(this DataStream stream, string inFormat)
     {
         switch (inFormat)
         {
-            case VertexElementFormat.Float:
+            case "VertexElementFormat_Float":
                 return stream.ReadSingle();
-            case VertexElementFormat.Half:
+            case "VertexElementFormat_Half":
                 return (float)stream.ReadHalf();
             default:
                 throw new Exception($"Can't convert {inFormat} to Float3");
         }
     }
 
-    public static Matrix4x4 ReadVertexAsMatrix(this DataStream stream, VertexElementFormat inFormat)
+    public static Matrix4x4 ReadVertexAsMatrix(this DataStream stream, string inFormat)
     {
         switch (inFormat)
         {
-            case VertexElementFormat.UInt:
+            case "VertexElementFormat_UInt":
             {
                 // packed quaternion
                 uint packed = stream.ReadUInt32();
@@ -209,8 +185,8 @@ public static class DataStreamExtensions
                 return new Matrix4x4(tangent.X, tangent.Y, tangent.Z, 1.0f, binormal.X, binormal.Y, binormal.Z, 1.0f, normal.X,
                     normal.Y, normal.Z, 1.0f, 0f, 0f, 0f, 1.0f);
             }
-            case VertexElementFormat.UByte4N:
-            case VertexElementFormat.UShort4N:
+            case "VertexElementFormat_UByte4N":
+            case "VertexElementFormat_UShort4N":
             {
                 // axis angle
                 Vector4 packed = stream.ReadVertexAsVector4(inFormat);
@@ -245,6 +221,8 @@ public static class DataStreamExtensions
                 binormal = Vector3.Cross(normal, tangent);
                 binormal = (flags & 8) != 0 ? -binormal : binormal;
                 normal = Vector3.Normalize(normal);
+                binormal = Vector3.Normalize(binormal);
+                tangent = Vector3.Normalize(tangent);
 
                 return new Matrix4x4(tangent.X, tangent.Y, tangent.Z, 1.0f, binormal.X, binormal.Y, binormal.Z, 1.0f, normal.X,
                     normal.Y, normal.Z, 1.0f, 0f, 0f, 0f, 1.0f);

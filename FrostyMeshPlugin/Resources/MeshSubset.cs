@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using Frosty.Sdk;
@@ -41,7 +40,7 @@ public class MeshSubset
     public int Categories { get; set; }
     public bool IsOpaque => (Categories & 1) != 0;
 
-    public void Deserialize(DataStream inStream, uint inSubsetSize)
+    public void Deserialize(DataStream inStream, int inSubsetSize)
     {
         long start = inStream.Position;
 
@@ -50,7 +49,7 @@ public class MeshSubset
 
         if (IsWeirdDiceFbFormat)
         {
-            // they store 2 geometrydecldesc runtime pointer so 2 runtime pointers
+            // they store 2 geometrydecldesc so 2 runtime pointers
             Debug.Assert(!inStream.ReadRelocPtr(null));
         }
 
@@ -87,7 +86,7 @@ public class MeshSubset
 
             if (ProfilesLibrary.FrostbiteVersion >= "2021.1.1")
             {
-                if (ProfilesLibrary.IsLoaded(ProfileVersion.DeadSpace, ProfileVersion.DragonAgeVeilguard))
+                if (ProfilesLibrary.IsLoaded(ProfileVersion.DeadSpace, ProfileVersion.DragonAgeVeilguard) || ProfilesLibrary.FrostbiteVersion >= "2021.2.3")
                 {
                     Debug.Assert(!inStream.ReadRelocPtr(null));
                 }
@@ -208,8 +207,12 @@ public class MeshSubset
 
         GeometryDeclarationDesc = inStream.ReadGeometryDeclarationDesc();
 
-        if (IsWeirdDiceFbFormat)
+        if (IsWeirdDiceFbFormat || ProfilesLibrary.IsLoaded(ProfileVersion.Madden25)) // Flags 1 << 9 ???
         {
+            if (ProfilesLibrary.IsLoaded(ProfileVersion.Madden25))
+            {
+                Debug.Assert((Flags & (1 << 9)) != 0);
+            }
             SecondGeometryDeclarationDesc = inStream.ReadGeometryDeclarationDesc();
         }
 
@@ -235,20 +238,14 @@ public class MeshSubset
         {
             if (ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard))
             {
-                inStream.ReadUInt64();
+                inStream.ReadUInt64(inPad: true);
             }
-            Hash = inStream.ReadUInt64(); // some hash probably same one as fb 2019 hash before geomdecldesc
+            Hash = inStream.ReadUInt64(inPad: true); // some hash probably same one as fb 2019 hash before geomdecldesc
             UnkFlags = inStream.ReadUInt32(); // 0x1505 for ZOnly + Shadow subsets
             uint unkHash3 = inStream.ReadUInt32(); // some other hash can be 0
             //Debug.Assert(!(unkHash3 == 0 && unkHash2 != 0));
 
-            if (ProfilesLibrary.IsLoaded(ProfileVersion.DeadSpace))
-            {
-                inStream.ReadUInt64();
-                inStream.ReadUInt64();
-            }
-
-            if (ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard))
+            if (ProfilesLibrary.IsLoaded(ProfileVersion.DeadSpace, ProfileVersion.DragonAgeVeilguard) || ProfilesLibrary.FrostbiteVersion >= "2021.2.3")
             {
                 inStream.ReadUInt64();
             }

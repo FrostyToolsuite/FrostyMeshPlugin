@@ -41,35 +41,48 @@ public class MeshExporter
 
         MeshSet meshSet = AssetManager.GetResAs<MeshSet>(resEntry);
 
-        Export(meshSet, inPath);
-
-        return true;
+        return Export(meshSet, inPath);
     }
 
-    public static void Export(MeshSet inMeshSet, string inPath)
+    public static unsafe bool Export(MeshSet inMeshSet, string inPath)
     {
         Container container = new GltfContainer();
+
+        Type? usageType = TypeLibrary.GetType("VertexElementUsage")?.Type;
+        Type? formatType = TypeLibrary.GetType("VertexElementFormat")?.Type;
+
+        if (usageType is null || formatType is null)
+        {
+            return false;
+        }
+        int texCoord0 = (int)Enum.Parse(usageType, "VertexElementUsage_TexCoord0");
+        int boneIndices = (int)Enum.Parse(usageType, "VertexElementUsage_BoneIndices");
+        int boneWeights = (int)Enum.Parse(usageType, "VertexElementUsage_BoneWeights");
 
         foreach (Resources.Mesh mesh in inMeshSet.Meshes)
         {
             Model model = new(mesh.ShortName);
 
-            // TODO: inline
+            Block<byte> data;
             if (mesh.ChunkId == Guid.Empty)
             {
-                FrostyLogger.Logger?.LogWarning("Inline vertex data is not supported atm.");
-                continue;
+                data = new Block<byte>(inMeshSet.InlineData!.Ptr + mesh.InlineVertexDataOffset,
+                    (int)(mesh.VertexBufferSize + mesh.IndexBufferSize));
+                data.MarkMemoryAsFragile();
             }
-
-            ChunkAssetEntry? chunkEntry = AssetManager.GetChunkAssetEntry(mesh.ChunkId);
-
-            if (chunkEntry is null)
+            else
             {
-                // TODO: error
-                //continue;
+                ChunkAssetEntry? chunkEntry = AssetManager.GetChunkAssetEntry(mesh.ChunkId);
+
+                if (chunkEntry is null)
+                {
+                    FrostyLogger.Logger?.LogError("Chunk {} does not exist", mesh.ChunkId);
+                    continue;
+                }
+                data = AssetManager.GetAsset(chunkEntry);
             }
 
-            using BlockStream chunkStream = new(new Block<byte>(File.ReadAllBytes($"/home/jona/Downloads/{mesh.ChunkId}.chunk")));
+            using BlockStream chunkStream = new(data);
 
             foreach (MeshSubset subset in mesh.Subsets)
             {
@@ -114,87 +127,88 @@ public class MeshExporter
 
                             chunkStream.Position = startPos + element.Offset;
 
-                            switch (element.Usage)
-                            {
-                                case VertexElementUsage.Pos:
-                                {
-                                    m.AddVertexPosition(chunkStream.ReadVertexAsVector3(element.Format));
-                                    break;
-                                }
-                                case VertexElementUsage.Normal:
-                                {
-                                    m.AddVertexNormal(normal = chunkStream.ReadVertexAsVector3(element.Format));
-                                    break;
-                                }
-                                case VertexElementUsage.Binormal:
-                                {
-                                    m.AddVertexBinormal(chunkStream.ReadVertexAsVector3(element.Format));
-                                    break;
-                                }
-                                case VertexElementUsage.Tangent:
-                                {
-                                    m.AddVertexTangent(tangent = chunkStream.ReadVertexAsVector3(element.Format));
-                                    break;
-                                }
-                                case VertexElementUsage.BinormalSign:
-                                {
-                                    // newer games have Tangent_BinormalSign
-                                    if (ProfilesLibrary.FrostbiteVersion >= "2017")
-                                    {
-                                        Vector4 tangentBinormalSign = chunkStream.ReadVertexAsVector4(element.Format);
-                                        tangent = new Vector3(tangentBinormalSign.X, tangentBinormalSign.Y, tangentBinormalSign.Z);
-                                        binormalSign = tangentBinormalSign.W;
-                                    }
-                                    else
-                                    {
-                                        binormalSign = chunkStream.ReadVertexAsSingle(element.Format);
-                                    }
+                            string usage = Enum.Parse(usageType, element.Usage.ToString()).ToString()!;
+                            string format = Enum.Parse(formatType, element.Format.ToString()).ToString()!;
 
+                            switch (usage)
+                            {
+                                case "VertexElementUsage_Pos":
+                                {
+                                    m.AddVertexPosition(chunkStream.ReadVertexAsVector3(format));
                                     break;
                                 }
-                                case VertexElementUsage.TangentSpace:
+                                case "VertexElementUsage_Normal":
                                 {
-                                    Matrix4x4 tbn = chunkStream.ReadVertexAsMatrix(element.Format);
+                                    m.AddVertexNormal(normal = chunkStream.ReadVertexAsVector3(format));
+                                    break;
+                                }
+                                case "VertexElementUsage_Binormal":
+                                {
+                                    m.AddVertexBinormal(chunkStream.ReadVertexAsVector3(format));
+                                    break;
+                                }
+                                case "VertexElementUsage_Tangent":
+                                {
+                                    m.AddVertexTangent(tangent = chunkStream.ReadVertexAsVector3(format));
+                                    break;
+                                }
+                                case "VertexElementUsage_BinormalSign":
+                                {
+                                    binormalSign = chunkStream.ReadVertexAsSingle(format);
+                                    break;
+                                }
+                                case "VertexElementUsage_Tangent_BinormalSign":
+                                {
+                                    Vector4 tangentBinormalSign = chunkStream.ReadVertexAsVector4(format);
+                                    tangent = new Vector3(tangentBinormalSign.X, tangentBinormalSign.Y, tangentBinormalSign.Z);
+                                    binormalSign = tangentBinormalSign.W;
+                                    break;
+                                }
+                                case "VertexElementUsage_TangentSpace":
+                                {
+                                    Matrix4x4 tbn = chunkStream.ReadVertexAsMatrix(format);
                                     m.AddVertexTangent(new Vector3(tbn.M11, tbn.M12, tbn.M13));
                                     m.AddVertexBinormal(new Vector3(tbn.M21, tbn.M22, tbn.M23));
                                     m.AddVertexNormal(new Vector3(tbn.M31, tbn.M32, tbn.M33));
                                     break;
                                 }
-                                case VertexElementUsage.TexCoord0:
-                                case VertexElementUsage.TexCoord1:
-                                case VertexElementUsage.TexCoord2:
-                                case VertexElementUsage.TexCoord3:
-                                case VertexElementUsage.TexCoord4:
-                                case VertexElementUsage.TexCoord5:
-                                case VertexElementUsage.TexCoord6:
-                                case VertexElementUsage.TexCoord7:
+                                case "VertexElementUsage_TexCoord0":
+                                case "VertexElementUsage_TexCoord1":
+                                case "VertexElementUsage_TexCoord2":
+                                case "VertexElementUsage_TexCoord3":
+                                case "VertexElementUsage_TexCoord4":
+                                case "VertexElementUsage_TexCoord5":
+                                case "VertexElementUsage_TexCoord6":
+                                case "VertexElementUsage_TexCoord7":
                                 {
-                                    Vector2 uv = chunkStream.ReadVertexAsVector2(element.Format);
-                                    m.AddVertexUv((int)element.Usage - (int)VertexElementUsage.TexCoord0, uv);
+                                    Vector2 uv = chunkStream.ReadVertexAsVector2(format);
+                                    m.AddVertexUv(element.Usage - texCoord0, uv);
                                     break;
                                 }
-                                case VertexElementUsage.Color0:
-                                case VertexElementUsage.Color1:
+                                case "VertexElementUsage_Color0":
+                                case "VertexElementUsage_Color1":
                                 {
-                                    Debug.Assert(element.Format == VertexElementFormat.UByte4N, "Invalid Vertex Format");
-                                    uint color = chunkStream.ReadUInt32(Endian.Big);
-                                    //m.AddVertexColorLayer((int)element.Usage - (int)VertexElementUsage.Color0, color);
+                                    Vector4 color = chunkStream.ReadVertexAsVector4(format);
+                                    //m.AddVertexColorLayer((int)element.Usage - (int)VertexElementUsage_Color0, color);
                                     break;
                                 }
-                                case VertexElementUsage.BoneIndices:
-                                case VertexElementUsage.BoneIndices2:
+                                case "VertexElementUsage_BoneIndices":
+                                case "VertexElementUsage_BoneIndices2":
                                 {
-                                    Vector4UI joints = chunkStream.ReadVertexAsVector4UI(element.Format);
-                                    m.AddVertexJoints(element.Usage - VertexElementUsage.BoneIndices, joints);
+                                    Vector4<uint> joints = chunkStream.ReadVertexAsVector4UInt(format);
+                                    m.AddVertexJoints(element.Usage - boneIndices, joints);
                                     break;
                                 }
-                                case VertexElementUsage.BoneWeights:
-                                case VertexElementUsage.BoneWeights2:
+                                case "VertexElementUsage_BoneWeights":
+                                case "VertexElementUsage_BoneWeights2":
                                 {
-                                    Vector4 weights = chunkStream.ReadVertexAsVector4(element.Format);
-                                    m.AddVertexWeights(element.Usage - VertexElementUsage.BoneWeights, weights);
+                                    Vector4 weights = chunkStream.ReadVertexAsVector4(format);
+                                    m.AddVertexWeights(element.Usage - boneWeights, weights);
                                     break;
                                 }
+                                default:
+                                    FrostyLogger.Logger?.LogDebug("Unimplemented VertexElementUsage: {}", usage);
+                                    break;
                             }
                         }
 
@@ -234,6 +248,12 @@ public class MeshExporter
             break;
         }
 
+        if (container.Models.Count == 0)
+        {
+            return false;
+        }
+
         container.Save(inPath);
+        return true;
     }
 }

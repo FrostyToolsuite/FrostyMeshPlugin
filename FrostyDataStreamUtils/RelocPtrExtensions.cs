@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Frosty.Sdk.IO;
 
 namespace FrostyDataStreamUtils;
@@ -43,6 +44,7 @@ public static class RelocPtrExtension
             stream.WriteUInt32((uint)offset);
         }
         s_table.Clear();
+        s_mapping.Clear();
     }
 
     public static bool ReadRelocPtr(this DataStream stream, Action<DataStream>? inReadFunc, Action<DataStream>? inPreJumpFunc = null)
@@ -58,5 +60,16 @@ public static class RelocPtrExtension
         inReadFunc?.Invoke(stream);
         stream.StepOut();
         return true;
+    }
+
+    public static string ReadString(this DataStream stream, Encoding? inEncoding = null)
+    {
+        string retVal = string.Empty;
+        stream.ReadRelocPtr(ds =>
+        {
+            retVal = ds.ReadNullTerminatedString(inEncoding);
+        });
+
+        return retVal;
     }
 }

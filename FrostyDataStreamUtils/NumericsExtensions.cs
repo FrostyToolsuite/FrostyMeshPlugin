@@ -80,4 +80,13 @@ public static class NumericsExtensions
         stream.WriteVector4(value.Min);
         stream.WriteVector4(value.Max);
     }
+
+    public static Matrix4x4 ReadLinearTransform(this DataStream stream)
+    {
+        stream.Pad(16);
+        return new Matrix4x4(stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(),
+            stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(),
+            stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(),
+            stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle(), stream.ReadSingle());
+    }
 }

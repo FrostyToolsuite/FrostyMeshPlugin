@@ -18,7 +18,7 @@ public class Mesh
     internal List<Vector3> Binormals { get; }
     internal List<List<Vector2>> Uvs { get; }
     internal List<List<Vector4>> Weights { get; }
-    internal List<List<Vector4UI>> Joints { get; }
+    internal List<List<Vector4<uint>>> Joints { get; }
     internal List<uint> Indices { get; }
     internal PrimitiveType PrimitiveType { get; }
     private readonly Matrix4x4 m_transform;
@@ -37,7 +37,7 @@ public class Mesh
         Binormals = inVertexCount == -1 ? new List<Vector3>() : new List<Vector3>(inVertexCount);
         Uvs = new List<List<Vector2>>();
         Weights = new List<List<Vector4>>();
-        Joints = new List<List<Vector4UI>>();
+        Joints = new List<List<Vector4<uint>>>();
         Indices = inVertexCount == -1 ? new List<uint>() : new List<uint>(inVertexCount * 3);
         m_transform = new Matrix4x4
         {
@@ -102,11 +102,11 @@ public class Mesh
         Weights[inIndex].Add(inWeights);
     }
 
-    public void AddVertexJoints(int inIndex, Vector4UI inJoints)
+    public void AddVertexJoints(int inIndex, Vector4<uint> inJoints)
     {
         if (Joints.Count <= inIndex)
         {
-            Joints.Add(new List<Vector4UI>());
+            Joints.Add(new List<Vector4<uint>>());
         }
         Joints[inIndex].Add(inJoints);
     }

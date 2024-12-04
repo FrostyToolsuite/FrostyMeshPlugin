@@ -49,7 +49,7 @@ public class Mesh
     public uint IndexBufferSize { get; private set; }
     public uint VertexBufferSize { get; private set; }
     public Guid ChunkId { get; private set; }
-    private uint m_inlineVertexDataOffset;
+    public int InlineVertexDataOffset;
     private string m_debugName;
     public string Name { get; set; }
     public string ShortName { get; private set; }
@@ -62,7 +62,7 @@ public class Mesh
 
     private List<MeshSubset> m_subsets = new();
 
-    public void Deserialize(DataStream inStream, uint inSubsetSize)
+    public void Deserialize(DataStream inStream, int inSubsetSize)
     {
         m_meshType = (MeshType)inStream.ReadInt32(inPad: true);
         m_maxInstances = inStream.ReadInt32(inPad: true);
@@ -103,7 +103,7 @@ public class Mesh
         int indexFormat = inStream.ReadInt32(inPad: true);
         if (ProfilesLibrary.FrostbiteVersion > "2014.1")
         {
-            IndexFormat = (int)Enum.Parse(TypeLibrary.GetType("RenderFormat")!, "RenderFormat_R32_UINT") == indexFormat ? 1 : 0;
+            IndexFormat = (int)Enum.Parse(TypeLibrary.GetType("RenderFormat")!.Type, "RenderFormat_R32_UINT") == indexFormat ? 1 : 0;
         }
         else
         {
@@ -128,15 +128,15 @@ public class Mesh
             Debug.Assert(!inStream.ReadRelocPtr(null));
         }
 
-        if (ProfilesLibrary.IsLoaded(ProfileVersion.DeadSpace, ProfileVersion.DragonAgeVeilguard))
+        if (ProfilesLibrary.IsLoaded(ProfileVersion.DeadSpace, ProfileVersion.DragonAgeVeilguard) || ProfilesLibrary.FrostbiteVersion >= "2021.2.3")
         {
             inStream.ReadInt32();
         }
 
         ChunkId = inStream.ReadGuid(inPad: true);
-        m_inlineVertexDataOffset = inStream.ReadUInt32(inPad: true);
-        Debug.Assert((m_flags.HasFlag(MeshFlags.StreamingEnable) && m_inlineVertexDataOffset == uint.MaxValue) ||
-                     (!m_flags.HasFlag(MeshFlags.StreamingEnable) && m_inlineVertexDataOffset != uint.MaxValue));
+        InlineVertexDataOffset = inStream.ReadInt32(inPad: true);
+        Debug.Assert((m_flags.HasFlag(MeshFlags.StreamingEnable) && InlineVertexDataOffset == -1) ||
+                     (!m_flags.HasFlag(MeshFlags.StreamingEnable) && InlineVertexDataOffset != -1));
 
         if (ProfilesLibrary.IsLoaded(ProfileVersion.DragonAgeVeilguard))
         {
